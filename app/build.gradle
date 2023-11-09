@@ -1,0 +1,101 @@
+plugins {
+    id 'com.android.application'
+}
+
+
+
+android {
+    namespace 'com.example.myapplication'
+    compileSdk 33
+    buildFeatures {
+        buildConfig = true
+    }
+    signingConfigs {
+        debug {
+            storeFile file {"pareto.jks"}
+            storePassword "pareto"
+            keyAlias "pareto"
+            keyPassword "pareto"
+
+            enableV1Signing true
+            enableV2Signing true
+//            enableV3Signing true
+
+        }
+        release {
+            storeFile file {"pareto.jks"}
+            storePassword "pareto"
+            keyAlias "pareto"
+            keyPassword "pareto"
+
+            v1SigningEnabled  true
+            v2SigningEnabled  true
+//            v3SigningEnabled  true
+            enableV1Signing true
+            enableV2Signing true
+//            enableV3Signing true
+
+        }
+    }
+    defaultConfig {
+        applicationId "com.example.myapplication"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+        ndkVersion "21.3.6528147"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
+    }
+
+    sourceSets{
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.debug
+            jniDebuggable true
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+    buildFeatures {
+        viewBinding true
+    }
+
+}
+
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'org.conscrypt:conscrypt-android:2.5.2'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    implementation 'com.github.megatronking.stringfog:xor:5.0.0'
+//    implementation 'com.github.megatronking.stringfog:interface:4.0.1'
+//    implementation 'com.github.megatronking.stringfog:gradle-plugin:5.0.0'
+
+}
