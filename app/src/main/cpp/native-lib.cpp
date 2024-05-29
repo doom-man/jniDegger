@@ -967,13 +967,13 @@ jint hook_AttachCurrentThreadAsDaemon(JavaVM *  , JNIEnv ** ,  void *){
 jclass hook_FindClass(hook_JNIEnv*, const char* className){
     ALOGD("hook_FindClass %s" , className);
     // 保证FindClass不为空
+    // todo: 维护一个classlist 后续使用 对应的GetStaticMethodID  ， CallStaticVoidMethod 进行对应
     return reinterpret_cast<jclass>(1);
 }
 
 jint hook_RegisterNatives(hook_JNIEnv*, jclass, const JNINativeMethod* jniNativeMethod,
                                    jint n){
     //dump jniNativeMethod
-
     ALOGD("hook_RegisterNatives");
     for(int i = 0 ; i <  n ; i++){
         ALOGD("hook_RegisterNatives %s %s %p" , jniNativeMethod[i].name , jniNativeMethod[i].signature , jniNativeMethod[i].fnPtr);
