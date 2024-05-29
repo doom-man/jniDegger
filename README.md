@@ -22,3 +22,4 @@ hook_RegisterNatives isProcessAlive (I)I 0xdd537739
 
 ## todo 
 1. 未补充的jnienv函数会直接报错，需要补充。
+2. 如果需要打印系统调用可以参考 https://github.com/besnardjb/ptperf/blob/master/tracee.c#L193
