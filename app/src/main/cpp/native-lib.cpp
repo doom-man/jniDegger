@@ -996,6 +996,7 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions = new hook_JNINativeInterface();
     fake_env.functions->FindClass = hook_FindClass;
     fake_env.functions->RegisterNatives = hook_RegisterNatives;
+    // ... there are stll so many function need to be assign
 
     hook_JavaVM  fake_jvm;
     fake_jvm.functions = new JNIInvokeInterface();
@@ -1025,6 +1026,12 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
 //    int ret = func(origin_jvm , NULL);
     // 伪造为hook_JavaVM时用
     int ret = func((JavaVM *)&fake_jvm , NULL);
+
+    // the ret should be
+    //#define JNI_VERSION_1_1 0x00010001
+    //#define JNI_VERSION_1_2 0x00010002
+    //#define JNI_VERSION_1_4 0x00010004
+    //#define JNI_VERSION_1_6 0x00010006
 
     ALOGD("JNI_OnLoad %d " , ret);
     // Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0 通常表示目标进程没有jniEnv 环境没有补充完整 ,调用到空指针引起
