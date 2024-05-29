@@ -1014,7 +1014,10 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
 //    fade->NewStringUTF("hello World");
 
 //    void * handle  =  dlopen("lib.so" , RTLD_NOW);
-    void * handle  =  dlopen("libtarget.so" , RTLD_NOW);
+    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+    if(handle == NULL){
+        ALOGD("dlopen error %s" , dlerror());
+    }
 
     jint (*func)(JavaVM *, void *pVoid);
     func = (jint (*)(JavaVM* , void *))dlsym(handle, "JNI_OnLoad");
