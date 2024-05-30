@@ -939,33 +939,33 @@ JNIEnv  * gEnv;
 
 
 jint hook_GetEnv(JavaVM *  , void ** env,  jint){
-    ALOGD("hook_GetEnv");
+    ALOGD("%s" , __FUNCTION__ );
     *env = gEnv;
     return 0;
 }
 
 jint hook_DestoryJavaVM(JavaVM *){
-    ALOGD("DestoryJavaVM");
+    ALOGD("%s" , __FUNCTION__ );
     return 0;
 }
 
 jint hook_AttachCurrentThread(JavaVM *  , JNIEnv ** ,  void*){
-    ALOGD("AttachCurrentThread");
+    ALOGD("%s" , __FUNCTION__ );
     return 0;
 }
 
 jint hook_DetachCurrentThread(JavaVM * ){
-    ALOGD("DetachCurrentThread");
+    ALOGD("%s" , __FUNCTION__ );
     return 0;
 }
 
 jint hook_AttachCurrentThreadAsDaemon(JavaVM *  , JNIEnv ** ,  void *){
-    ALOGD("AttachCurrentThreadAsDaemon");
+    ALOGD("%s" , __FUNCTION__ );
     return 0;
 }
 
 jclass hook_FindClass(hook_JNIEnv*, const char* className){
-    ALOGD("hook_FindClass %s" , className);
+    ALOGD("%s" , __FUNCTION__ );
     // 保证FindClass不为空
     // todo: 维护一个classlist 后续使用 对应的GetStaticMethodID  ， CallStaticVoidMethod 进行对应
     return reinterpret_cast<jclass>(1);
@@ -974,7 +974,7 @@ jclass hook_FindClass(hook_JNIEnv*, const char* className){
 jint hook_RegisterNatives(hook_JNIEnv*, jclass, const JNINativeMethod* jniNativeMethod,
                                    jint n){
     //dump jniNativeMethod
-    ALOGD("hook_RegisterNatives");
+    ALOGD("%s" , __FUNCTION__ );
     for(int i = 0 ; i <  n ; i++){
         ALOGD("hook_RegisterNatives %s %s %p" , jniNativeMethod[i].name , jniNativeMethod[i].signature , jniNativeMethod[i].fnPtr);
     }
@@ -994,9 +994,15 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
 
     hook_JNIEnv fake_env ;
     fake_env.functions = new hook_JNINativeInterface();
+    // ... there are stll so many function need to be assign
+    // 将函数指针赋值为对应的函数索引，在未正确赋值的情况会导致SIGSEGV，通过fault addr 的值，明确那个函数需要完善。
+    for(int i = 0 ;i < sizeof(hook_JNINativeInterface) / sizeof(size_t) ; i++){
+        ((size_t *)fake_env.functions)[i] = i;
+    }
+
     fake_env.functions->FindClass = hook_FindClass;
     fake_env.functions->RegisterNatives = hook_RegisterNatives;
-    // ... there are stll so many function need to be assign
+    fake_env.functions->GetVersion = hook_GetVersion;
 
     hook_JavaVM  fake_jvm;
     fake_jvm.functions = new JNIInvokeInterface();
