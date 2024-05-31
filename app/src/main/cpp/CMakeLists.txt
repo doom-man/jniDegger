@@ -12,6 +12,23 @@ enable_language(C ASM)
 set(can_use_assembler TRUE)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
+if(NOT TARGET dobby)
+        set(DOBBY_DIR Dobby)
+        macro(SET_OPTION option value)
+                set(${option} ${value} CACHE INTERNAL "" FORCE)
+        endmacro()
+        SET_OPTION(DOBBY_DEBUG OFF)
+        SET_OPTION(DOBBY_GENERATE_SHARED OFF)
+        add_subdirectory(${DOBBY_DIR} dobby)
+        get_property(DOBBY_INCLUDE_DIRECTORIES
+                TARGET dobby
+                PROPERTY INCLUDE_DIRECTORIES)
+        include_directories(
+                .
+                ${DOBBY_INCLUDE_DIRECTORIES}
+                $<TARGET_PROPERTY:dobby,INCLUDE_DIRECTORIES>
+        )
+endif()
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.
@@ -58,7 +75,9 @@ find_library( # Sets the name of the path variable.
 target_link_libraries( # Specifies the target library.
         myapplication
 
+        PRIVATE
         # Links the target library to the log library
         # included in the NDK.
         ${log-lib}
+        dobby_static
         )
