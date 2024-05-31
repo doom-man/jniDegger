@@ -70,7 +70,7 @@ jint hook_AttachCurrentThreadAsDaemon(JavaVM *  , JNIEnv ** ,  void *){
 }
 
 jclass hook_FindClass(hook_JNIEnv*, const char* className){
-    ALOGD("%s %s" , __FUNCTION__  , className);
+//    ALOGD("%s %s" , __FUNCTION__  , className);
     for(auto & iter : gClassNameMap){
         if(iter.second == className){
             return reinterpret_cast<jclass>(iter.first);
@@ -139,7 +139,7 @@ jclass hook_GetObjectClass(hook_JNIEnv*, jobject obj){
     return reinterpret_cast<jclass>(1);
 }
 jmethodID hook_GetMethodID(hook_JNIEnv*, jclass cls, const char* name, const char* sig){
-    ALOGD("hook_GetMethodID %p" , cls);
+//    ALOGD("hook_GetMethodID %p" , cls);
     string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
 
     string nameSig = name;
