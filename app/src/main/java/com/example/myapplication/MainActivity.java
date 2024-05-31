@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Used to load the 'myapplication' library on application startup.
     static {
-        System.loadLibrary("myapplication");
+        System.loadLibrary("jnidebugger");
 //        System.loadLibrary("");
     }
 

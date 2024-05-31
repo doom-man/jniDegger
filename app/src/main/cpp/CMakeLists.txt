@@ -5,7 +5,7 @@
 
 cmake_minimum_required(VERSION 3.22.1)
 
-project("myapplication")
+project("jnidebugger")
 # Declares and names the project.
 
 enable_language(C ASM)
@@ -35,7 +35,7 @@ endif()
 # Gradle automatically packages shared libraries with your APK.
 
 add_library( # Sets the name of the library.
-        myapplication
+        jnidebugger
 
         # Sets the library as a shared library.
         SHARED
@@ -45,7 +45,7 @@ add_library( # Sets the name of the library.
 #        obf.S
         )
 
-target_include_directories(myapplication
+target_include_directories(jnidebugger
         PUBLIC
         ./)
 
@@ -73,7 +73,7 @@ find_library( # Sets the name of the path variable.
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-        myapplication
+        jnidebugger
 
         PRIVATE
         # Links the target library to the log library

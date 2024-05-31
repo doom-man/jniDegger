@@ -34,11 +34,14 @@ extern "C" long raw_syscall();
 #include <hook_jni.h>
 #include <map>
 #include "dobby.h"
+#include <jni.h>
 
 JNIEnv  * gEnv;
+JNIEnv  * oEnv;
 using namespace std;
 
-map<string * , string> gMap;
+map<string * , string> gClassNameMap;
+map<string * , string> gMethodIDMap;
 
 jint hook_GetEnv(JavaVM *  , void ** env,  jint){
     ALOGD("%s" , __FUNCTION__ );
@@ -68,7 +71,7 @@ jint hook_AttachCurrentThreadAsDaemon(JavaVM *  , JNIEnv ** ,  void *){
 
 jclass hook_FindClass(hook_JNIEnv*, const char* className){
     ALOGD("%s %s" , __FUNCTION__  , className);
-    for(auto & iter : gMap){
+    for(auto & iter : gClassNameMap){
         if(iter.second == className){
             return reinterpret_cast<jclass>(iter.first);
         }
@@ -76,15 +79,15 @@ jclass hook_FindClass(hook_JNIEnv*, const char* className){
     string * name = new string(className);
     // 保证FindClass不为空
     // todo: 维护一个classlist 后续使用 对应的GetStaticMethodID  ， CallStaticVoidMethod 进行对应
-    ALOGD("hook_FindClass %p" , name);
-    gMap[name] = className;
+//    ALOGD("hook_FindClass %p" , name);
+    gClassNameMap[name] = className;
     return reinterpret_cast<jclass>(name);
 }
 
 jint hook_RegisterNatives(hook_JNIEnv*, jclass cls, const JNINativeMethod* jniNativeMethod,
                                    jint n){
     //dump jniNativeMethod
-    string clsName = gMap[reinterpret_cast<string *>(cls)];
+    string clsName = gClassNameMap[reinterpret_cast<string *>(cls)];
     for(int i = 0 ; i <  n ; i++){
         ALOGD("hook_RegisterNatives %s.%s %s %p" ,clsName.c_str() ,jniNativeMethod[i].name , jniNativeMethod[i].signature , jniNativeMethod[i].fnPtr);
     }
@@ -109,16 +112,110 @@ jobject     hook_ToReflectedMethod(hook_JNIEnv*, jclass, jmethodID, jboolean){
 
 // todo: 假如传入的是一个真实的obj 能否解析这个obj对应类名
 jclass hook_GetObjectClass(hook_JNIEnv*, jobject obj){
-    ALOGD("%s" , __FUNCTION__ );
+    ALOGD("%s %p" , __FUNCTION__  , obj);
+
+    // 伪造的obj
+    if(gClassNameMap[reinterpret_cast<string *>(obj)] != ""){
+        ALOGD("hook_GetObjectClass %s" , gClassNameMap[reinterpret_cast<string *>(obj)].c_str());
+        return reinterpret_cast<jclass>(obj);
+    }
+    // 真实的obj
+    jclass cls = oEnv->GetObjectClass(obj);
+
+    jmethodID mid = oEnv->GetMethodID(cls, "getClass", "()Ljava/lang/Class;");
+    jobject clsObj = oEnv->CallObjectMethod(obj, mid);
+
+    cls = oEnv->GetObjectClass(clsObj);
+
+    mid = oEnv->GetMethodID(cls, "getName", "()Ljava/lang/String;");
+
+    jstring strObj = (jstring)oEnv->CallObjectMethod(clsObj, mid);
+
+    const char* str = oEnv->GetStringUTFChars(strObj, NULL);
+    ALOGD("%s %p" , __FUNCTION__  , str);
+
+    oEnv->ReleaseStringUTFChars(strObj, str);
+
     return reinterpret_cast<jclass>(1);
 }
 jmethodID hook_GetMethodID(hook_JNIEnv*, jclass cls, const char* name, const char* sig){
     ALOGD("hook_GetMethodID %p" , cls);
-    string clsName = gMap[reinterpret_cast<string*>(cls)];
-    ALOGD("%s %s.%s %s" , __FUNCTION__ ,clsName.c_str(), name , sig );
-    return reinterpret_cast<jmethodID>(1);
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+
+    string nameSig = name;
+    nameSig.append(sig);
+    for(auto & iter : gMethodIDMap){
+        if(iter.second == nameSig){
+            return reinterpret_cast<jmethodID>(iter.first);
+        }
+    }
+    string * value = new string(nameSig);
+
+    gMethodIDMap[value] = nameSig;
+    ALOGD("%s %s.%s" , __FUNCTION__ ,clsName.c_str(), nameSig.c_str() );
+    return reinterpret_cast<jmethodID>(value);
+}
+jmethodID hook_GetStaticMethodID(hook_JNIEnv*, jclass cls, const char* name, const char* sig){
+//    ALOGD("%s %p" , __FUNCTION__ , cls);
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = "static ";
+    nameSig.append(name);
+    nameSig.append(sig);
+    for(auto & iter : gMethodIDMap){
+        if(iter.second == nameSig){
+            return reinterpret_cast<jmethodID>(iter.first);
+        }
+    }
+    string * value = new string(nameSig);
+
+    gMethodIDMap[value] = nameSig;
+    ALOGD("%s %s.%s" , __FUNCTION__ ,clsName.c_str(), nameSig.c_str() );
+    return reinterpret_cast<jmethodID>(value);
 }
 
+jobject hook_CallStaticObjectMethod(hook_JNIEnv*, jclass cls, jmethodID mid, ...){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ , clsName.c_str() , nameSig.c_str());
+    return reinterpret_cast<jobject>(cls);
+}
+
+jobject hook_CallStaticObjectMethodA(hook_JNIEnv*, jclass cls, jmethodID mid, const jvalue*){
+    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ , clsName.c_str() , nameSig.c_str());
+    return reinterpret_cast<jobject>(cls);
+}
+
+jobject hook_CallStaticObjectMethodV(hook_JNIEnv*, jclass cls, jmethodID mid, va_list){
+//        ALOGD("%s" , __FUNCTION__ );
+        string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+        string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+        ALOGD("%s %s %s" , __FUNCTION__ , clsName.c_str() , nameSig.c_str());
+        return reinterpret_cast<jobject>(cls);
+}
+jobject hook_CallObjectMethod(hook_JNIEnv*, jobject cls, jmethodID mid, ...){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ , clsName.c_str() , nameSig.c_str());
+    return reinterpret_cast<jobject>(cls);
+}
+jobject hook_CallObjectMethodA(hook_JNIEnv*, jobject jobj, jmethodID mid, const jvalue*){
+    ALOGD("%s" , __FUNCTION__ );
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s" , __FUNCTION__ ,  nameSig.c_str());
+    return reinterpret_cast<jobject>(jobj);
+}
+jobject hook_CallObjectMethodV(hook_JNIEnv*, jobject jobj, jmethodID mid, va_list){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(jobj)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ ,  clsName.c_str() ,nameSig.c_str());
+    return reinterpret_cast<jobject>(jobj);
+}
 static void (*o_open)(const char  *, int);
 
 static void
@@ -164,6 +261,13 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions->ToReflectedMethod = hook_ToReflectedMethod;
     fake_env.functions->GetObjectClass = hook_GetObjectClass;
     fake_env.functions->GetMethodID = hook_GetMethodID;
+    fake_env.functions->GetStaticMethodID = hook_GetStaticMethodID;
+    fake_env.functions->CallStaticObjectMethod = hook_CallStaticObjectMethod;
+    fake_env.functions->CallStaticObjectMethodA = hook_CallStaticObjectMethodA;
+    fake_env.functions->CallStaticObjectMethodV = hook_CallStaticObjectMethodV;
+    fake_env.functions->CallObjectMethod = hook_CallObjectMethod;
+    fake_env.functions->CallObjectMethodV = hook_CallObjectMethodV;
+    fake_env.functions->CallObjectMethodA = hook_CallObjectMethodA;
 
 
     hook_JavaVM  fake_jvm;
@@ -176,6 +280,7 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
 
 //     将伪造的fake_env赋值全局gEnv ，通过hook_JavaVM的GetEnv函数交给目标调用
     gEnv = (JNIEnv*)&fake_env;
+    oEnv = env;
 
     // 测试伪造的JavaVM
 //    JNIEnv * fade;
@@ -184,8 +289,11 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
 
     // dobby inlinehook 用例
     doHook();
-//    void * handle  =  dlopen("lib.so" , RTLD_NOW);
-    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+
+    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
+    // vmos
+//    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+
     if(handle == NULL){
         ALOGD("dlopen error %s" , dlerror());
     }
