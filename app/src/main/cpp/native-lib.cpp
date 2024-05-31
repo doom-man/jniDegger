@@ -290,9 +290,9 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     // dobby inlinehook 用例
     doHook();
 
-//    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
+    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
     // vmos
-    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+//    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
 
     if(handle == NULL){
         ALOGD("dlopen error %s" , dlerror());
