@@ -29,3 +29,7 @@ D  hook_CallObjectMethodV android/app/ActivityThread getPackageName()Ljava/lang/
 2. 如果需要打印系统调用可以参考 https://github.com/besnardjb/ptperf/blob/master/tracee.c#L193
 3. 提供ptrace方式的svc trace.
 4. 当findclass查找的类和后续调用该类的方法都是android环境存在的类时 ，返回执行的结果。
+
+## reference
+* https://cs.android.com/android/platform/superproject/+/master:art/runtime/jni/jni_internal.cc;l=3144?q=CallStaticObjectMethod&ss=android%2Fplatform%2Fsuperproject
+* https://android.googlesource.com/platform/dalvik.git/+/android-4.2.2_r1/vm/Jni.cpp
