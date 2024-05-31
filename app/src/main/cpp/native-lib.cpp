@@ -216,6 +216,42 @@ jobject hook_CallObjectMethodV(hook_JNIEnv*, jobject jobj, jmethodID mid, va_lis
     ALOGD("%s %s %s" , __FUNCTION__ ,  clsName.c_str() ,nameSig.c_str());
     return reinterpret_cast<jobject>(jobj);
 }
+
+jobject hook_NewGlobalRef(hook_JNIEnv*, jobject jobj){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(jobj)];
+    ALOGD("%s %s" , __FUNCTION__ ,  clsName.c_str() );
+    return reinterpret_cast<jobject>(jobj);
+}
+
+jobject hook_NewObject(hook_JNIEnv*, jclass cls, jmethodID mid, ...){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ ,  clsName.c_str() ,nameSig.c_str());
+    return reinterpret_cast<jobject>(cls);
+}
+jobject hook_NewObjectV(hook_JNIEnv*, jclass cls, jmethodID mid, va_list){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ ,  clsName.c_str() ,nameSig.c_str());
+    return reinterpret_cast<jobject>(cls);
+}
+jobject hook_NewObjectA(hook_JNIEnv*, jclass cls, jmethodID mid, const jvalue*){
+//    ALOGD("%s" , __FUNCTION__ );
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ ,  clsName.c_str() ,nameSig.c_str());
+    return reinterpret_cast<jobject>(cls);
+}
+
+void hook_DeleteGlobalRef(hook_JNIEnv*, jobject jobj){
+    string clsName = gClassNameMap[reinterpret_cast<string*>(jobj)];
+    ALOGD("%s %s" , __FUNCTION__ ,  clsName.c_str() );
+    return ;
+}
+
 static void (*o_open)(const char  *, int);
 
 static void
@@ -268,6 +304,13 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions->CallObjectMethod = hook_CallObjectMethod;
     fake_env.functions->CallObjectMethodV = hook_CallObjectMethodV;
     fake_env.functions->CallObjectMethodA = hook_CallObjectMethodA;
+    fake_env.functions->NewObject = hook_NewObject;
+    fake_env.functions->NewObjectV = hook_NewObjectV;
+    fake_env.functions->NewObjectA = hook_NewObjectA;
+    fake_env.functions->DeleteLocalRef = hook_DeleteGlobalRef;
+    fake_env.functions->DeleteGlobalRef = hook_DeleteGlobalRef;
+    fake_env.functions->NewGlobalRef = hook_NewGlobalRef;
+    jobject     (*NewGlobalRef)(hook_JNIEnv*, jobject);
 
 
     hook_JavaVM  fake_jvm;
@@ -290,9 +333,9 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     // dobby inlinehook 用例
     doHook();
 
-    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
+//    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
     // vmos
-//    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
 
     if(handle == NULL){
         ALOGD("dlopen error %s" , dlerror());
