@@ -112,7 +112,7 @@ jobject     hook_ToReflectedMethod(hook_JNIEnv*, jclass, jmethodID, jboolean){
 
 // todo: 假如传入的是一个真实的obj 能否解析这个obj对应类名
 jclass hook_GetObjectClass(hook_JNIEnv*, jobject obj){
-    ALOGD("%s %p" , __FUNCTION__  , obj);
+//    ALOGD("%s %p" , __FUNCTION__  , obj);
 
     // 伪造的obj
     if(gClassNameMap[reinterpret_cast<string *>(obj)] != ""){
@@ -182,7 +182,7 @@ jobject hook_CallStaticObjectMethod(hook_JNIEnv*, jclass cls, jmethodID mid, ...
 }
 
 jobject hook_CallStaticObjectMethodA(hook_JNIEnv*, jclass cls, jmethodID mid, const jvalue*){
-    ALOGD("%s" , __FUNCTION__ );
+//    ALOGD("%s" , __FUNCTION__ );
     string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
     string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
     ALOGD("%s %s %s" , __FUNCTION__ , clsName.c_str() , nameSig.c_str());
@@ -290,9 +290,9 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     // dobby inlinehook 用例
     doHook();
 
-    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
+//    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
     // vmos
-//    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
 
     if(handle == NULL){
         ALOGD("dlopen error %s" , dlerror());
@@ -312,7 +312,7 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     //#define JNI_VERSION_1_6 0x00010006
 
     ALOGD("JNI_OnLoad %d " , ret);
-    // Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0 通常表示目标进程没有jniEnv 环境没有补充完整 ,调用到空指针引起
+    // Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0xXX 通常表示目标进程没有jniEnv 环境没有补充完整 ,调用到空指针引起
 
     return env->NewStringUTF(hello);
 
