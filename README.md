@@ -6,8 +6,7 @@
 
 和unidbg的差异？
 * 思想是一致的，unidbg通过unicorn 执行指令，也是传入构造函数指针. 差异在一个真实android执行环境、一个是模拟CPU环境。换句话说，假设目标elf调用jni函数，我们可能获取到真实的返回结果,当然这个结果可能不是正确的.
-
-所以如果不需要获取jni函数的返回结果，可以使用unidbg，如果需要获取jni函数的返回结果，可以使用jniDegger.
+* unidbg基于unicorn模拟CPU执行指令，jniDegger基于真实设备，可以利用系统机制。
 
 1. 打印RegisterNatives中JNINativeMethod和jni调用java
 ```agsl
