@@ -252,6 +252,25 @@ void hook_DeleteGlobalRef(hook_JNIEnv*, jobject jobj){
     return ;
 }
 
+void hook_ExceptionClear(hook_JNIEnv *env){
+    ALOGD("%s" , __FUNCTION__ );
+    return ;
+}
+
+void hook_ExceptionDescribe(hook_JNIEnv *env){
+    ALOGD("%s" , __FUNCTION__ );
+    return ;
+}
+
+void hook_FatalError(hook_JNIEnv *env , const char * str){
+    ALOGD("%s %s" , __FUNCTION__  , str);
+    return ;
+}
+void tryError(){
+    ALOGD("%s" , __FUNCTION__  );
+    return ;
+}
+
 static void (*o_open)(const char  *, int);
 
 static void
@@ -261,7 +280,7 @@ my_open(const char  * path, int flags) {
 }
 
 static void doHook() {
-    void *handle = DobbySymbolResolver("libc.so", "dlopen");
+    void *handle = DobbySymbolResolver("libc.so", "open");
     if (handle == nullptr) {
         ALOGD("Couldn't find 'open' handle.");
         return;
@@ -287,7 +306,7 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     // 将函数指针赋值为对应的函数索引，在未正确赋值的情况会导致SIGSEGV，通过fault addr 的值，可以明确那个函数需要完善。
     // 例如:fault addr 0x22 则说明第34个函数指针需要完善 , 到functions.txt 定位到对应的函数
     for(int i = 0 ;i < sizeof(hook_JNINativeInterface) / sizeof(size_t) ; i++){
-        ((size_t *)fake_env.functions)[i] = i+1;
+        ((size_t *)fake_env.functions)[i] = i ;
     }
 
     fake_env.functions->FindClass = hook_FindClass;
@@ -310,7 +329,11 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions->DeleteLocalRef = hook_DeleteGlobalRef;
     fake_env.functions->DeleteGlobalRef = hook_DeleteGlobalRef;
     fake_env.functions->NewGlobalRef = hook_NewGlobalRef;
-    jobject     (*NewGlobalRef)(hook_JNIEnv*, jobject);
+    fake_env.functions->ExceptionClear = hook_ExceptionClear;
+    fake_env.functions->ExceptionDescribe = hook_ExceptionDescribe;
+    fake_env.functions->FatalError = hook_FatalError;
+    fake_env.functions->PopLocalFrame = reinterpret_cast<jobject (*)(hook_JNIEnv *,
+                                                                     jobject)>(tryError);
 
 
     hook_JavaVM  fake_jvm;
@@ -335,7 +358,7 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
 
 //    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
     // vmos
-    void * handle  =  dlopen("libnative-lib.so" , RTLD_NOW);
+    void * handle  =  dlopen("libJoelitonMods.so" , RTLD_NOW);
 
     if(handle == NULL){
         ALOGD("dlopen error %s" , dlerror());
