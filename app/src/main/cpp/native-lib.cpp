@@ -89,7 +89,7 @@ jint hook_RegisterNatives(hook_JNIEnv*, jclass cls, const JNINativeMethod* jniNa
     //dump jniNativeMethod
     string clsName = gClassNameMap[reinterpret_cast<string *>(cls)];
     for(int i = 0 ; i <  n ; i++){
-        ALOGD("hook_RegisterNatives %s.%s %s %p" ,clsName.c_str() ,jniNativeMethod[i].name , jniNativeMethod[i].signature , jniNativeMethod[i].fnPtr);
+        ALOGD("hook_RegisterNatives %s.%s %s %p" ,clsName.c_str() ,jniNativeMethod[i].name , jniNativeMethod[i].signature ,jniNativeMethod[i].fnPtr);
     }
     return JNI_TRUE;
 
@@ -254,6 +254,7 @@ void hook_DeleteGlobalRef(hook_JNIEnv*, jobject jobj){
 
 void hook_ExceptionClear(hook_JNIEnv *env){
     ALOGD("%s" , __FUNCTION__ );
+    HasException = false;
     return ;
 }
 
@@ -262,16 +263,58 @@ void hook_ExceptionDescribe(hook_JNIEnv *env){
     return ;
 }
 
+jthrowable  hook_ExceptionOccurred(hook_JNIEnv*){
+    FUNC_LOG();
+    return reinterpret_cast<jthrowable>(HasException);
+}
+
+jboolean  hook_ExceptionCheck(hook_JNIEnv* env){
+    ALOGD("%s" , __FUNCTION__ );
+    return  0;
+}
 void hook_FatalError(hook_JNIEnv *env , const char * str){
     ALOGD("%s %s" , __FUNCTION__  , str);
     return ;
+}
+jobject  hook_PopLocalFrame(hook_JNIEnv*, jobject){
+    FUNC_LOG();
+    return 0;
 }
 void tryError(){
     ALOGD("%s" , __FUNCTION__  );
     return ;
 }
 
-static void (*o_open)(const char  *, int);
+jint  hook_PushLocalFrame(hook_JNIEnv* env , jint num){
+    ALOGD("%s" , __FUNCTION__  );
+    return 0;
+}
+
+const char* hook_GetStringUTFChars(hook_JNIEnv* env, jstring pjstr, jboolean* bvalue){
+    FUNC_LOG();
+    const char * nlstr = "null";
+    const char * retVal = "parse urself";
+    if(pjstr == NULL){
+        ALOGD("%s","null");
+        return nlstr;
+    }else{
+        ALOGD("%s",retVal);
+        return retVal;
+    }
+}
+
+void hook_ReleaseStringUTFChars(hook_JNIEnv*, jstring pjstr, const char* cchr){
+    FUNC_LOG();
+    ALOGD("%s",cchr);
+    return;
+}
+
+jint hook_Throw(hook_JNIEnv*, jthrowable){
+    FUNC_LOG();
+    HasException = true;
+    return  0;
+}
+static void (*o_open)(const char  * , int );
 
 static void
 my_open(const char  * path, int flags) {
@@ -335,6 +378,12 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions->PopLocalFrame = reinterpret_cast<jobject (*)(hook_JNIEnv *,
                                                                      jobject)>(tryError);
 
+    fake_env.functions->PushLocalFrame = hook_PushLocalFrame;
+    fake_env.functions->ExceptionCheck = hook_ExceptionCheck;
+    fake_env.functions->ExceptionOccurred = hook_ExceptionOccurred;
+    fake_env.functions->GetStringUTFChars = hook_GetStringUTFChars;
+    fake_env.functions->ReleaseStringUTFChars = hook_ReleaseStringUTFChars;
+    fake_env.functions->Throw = hook_Throw;
 
     hook_JavaVM  fake_jvm;
     fake_jvm.functions = new JNIInvokeInterface();
