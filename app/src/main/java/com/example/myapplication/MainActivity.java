@@ -8,34 +8,17 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Message;
-import android.provider.Settings;
-import android.util.Log;
 import android.widget.TextView;
 
 import com.example.myapplication.databinding.ActivityMainBinding;
-
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.NetworkInterface;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.Enumeration;
-import java.lang.reflect.Proxy;
 
 public class MainActivity extends AppCompatActivity {
 
     // Used to load the 'myapplication' library on application startup.
     static {
-        System.loadLibrary("jnidebugger");
-//        System.loadLibrary("");
+        System.loadLibrary("dbg");
     }
 
     private ActivityMainBinding binding;
@@ -67,7 +50,9 @@ public class MainActivity extends AppCompatActivity {
 
 //        mHandler.sendMessage(msg);
 //        getSig(this.getApplicationInfo().sourceDir);
-        tv.setText(stringFromJNI2());
+        initial();
+        loadELF("libanogs.so");
+        tv.setText("hello");
 //        tv.setText("hello");
 
         StringBuilder sb =  new StringBuilder();
@@ -274,6 +259,7 @@ public class MainActivity extends AppCompatActivity {
      * which is packaged with this application.
      */
 
-    public native String stringFromJNI2();
+    public native void loadELF(String name);
+    public native void initial();
 //    public native String getSig(String path);
 }

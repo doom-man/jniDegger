@@ -30,22 +30,27 @@ extern "C" long raw_syscall();
 #define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define FUNC_LOG() ALOGD("%s" , __FUNCTION__ );
 
 #include <hook_jni.h>
 #include <map>
 #include "dobby.h"
 #include <jni.h>
 
-JNIEnv  * gEnv;
 JNIEnv  * oEnv;
 using namespace std;
+bool HasException = false;
 
 map<string * , string> gClassNameMap;
 map<string * , string> gMethodIDMap;
+JavaVM * oJvm;
+hook_JNIEnv fake_env ;
+hook_JavaVM  fake_jvm;
+
 
 jint hook_GetEnv(JavaVM *  , void ** env,  jint){
     ALOGD("%s" , __FUNCTION__ );
-    *env = gEnv;
+    *env = &fake_env;
     return 0;
 }
 
@@ -209,6 +214,12 @@ jobject hook_CallObjectMethodA(hook_JNIEnv*, jobject jobj, jmethodID mid, const 
     ALOGD("%s %s" , __FUNCTION__ ,  nameSig.c_str());
     return reinterpret_cast<jobject>(jobj);
 }
+jlong hook_CallStaticLongMethodV(hook_JNIEnv*, jclass cls, jmethodID mid, va_list ){
+    string clsName = gClassNameMap[reinterpret_cast<string*>(cls)];
+    string nameSig = gMethodIDMap[reinterpret_cast<string*>(mid)];
+    ALOGD("%s %s %s" , __FUNCTION__ , clsName.c_str() , nameSig.c_str());
+    return reinterpret_cast<jlong>(cls);
+}
 jobject hook_CallObjectMethodV(hook_JNIEnv*, jobject jobj, jmethodID mid, va_list){
 //    ALOGD("%s" , __FUNCTION__ );
     string clsName = gClassNameMap[reinterpret_cast<string*>(jobj)];
@@ -333,23 +344,63 @@ static void doHook() {
               (void **) &o_open);
 }
 
-extern "C"
-JNIEXPORT jstring JNICALL
-Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject thiz) {
-    // TODO: implement stringFromJNI2()
-    const char * hello = "Hello from C++";
-    //新建jvm接口 , 并且伪造JavaVM提供的函数
-    // 通过JNIEnv获取 获取javaVM
-    JavaVM * origin_jvm;
-    env->GetJavaVM(&origin_jvm);
+extern int g_acf_array[] = {0 , 1};
+extern int g_aco_array[] = {1,1};
 
-    hook_JNIEnv fake_env ;
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_myapplication_MainActivity_loadELF(JNIEnv *env, jobject thiz , jstring name) {
+
+    const char * path = env->GetStringUTFChars(name, nullptr);
+    void * handle  =  dlopen(path , RTLD_NOW);
+
+    if(handle == NULL){
+        ALOGD("dlopen error %s" , dlerror());
+    }
+    else {
+        ALOGD("dlopen successful");
+    }
+//
+    jint (*func)(JavaVM *, void *pVoid);
+    func = (jint (*)(JavaVM* , void *))dlsym(handle, "JNI_OnLoad");
+
+    if(func ==NULL){
+        ALOGD("JNI_Onload not found");
+    }
+
+//    int ret = func(origin_jvm , NULL);
+    // 伪造为hook_JavaVM时用
+    int ret = func((JavaVM *)&fake_jvm , NULL);
+
+    // the ret should be
+    //#define JNI_VERSION_1_1 0x00010001
+    //#define JNI_VERSION_1_2 0x00010002
+    //#define JNI_VERSION_1_4 0x00010004
+    //#define JNI_VERSION_1_6 0x00010006
+
+    ALOGD("JNI_OnLoad %d " , ret);
+    // Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0xXX 通常表示目标进程没有jniEnv 环境没有补充完整 ,调用到空指针引起
+
+}
+
+// Register native methods
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    return JNI_VERSION_1_6; // Success
+}
+
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_example_myapplication_MainActivity_initial(JNIEnv *env, jobject thiz) {
+    // TODO: implement initial()
+    env->GetJavaVM(&oJvm);
     fake_env.functions = new hook_JNINativeInterface();
 
     // 将函数指针赋值为对应的函数索引，在未正确赋值的情况会导致SIGSEGV，通过fault addr 的值，可以明确那个函数需要完善。
     // 例如:fault addr 0x22 则说明第34个函数指针需要完善 , 到functions.txt 定位到对应的函数
     for(int i = 0 ;i < sizeof(hook_JNINativeInterface) / sizeof(size_t) ; i++){
-        ((size_t *)fake_env.functions)[i] = i ;
+        ((size_t *)fake_env.functions)[i] = i + 5;
     }
 
     fake_env.functions->FindClass = hook_FindClass;
@@ -366,6 +417,24 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions->CallObjectMethod = hook_CallObjectMethod;
     fake_env.functions->CallObjectMethodV = hook_CallObjectMethodV;
     fake_env.functions->CallObjectMethodA = hook_CallObjectMethodA;
+    fake_env.functions->CallIntMethod = reinterpret_cast<jint (*)(hook_JNIEnv *, jobject, jmethodID,
+                                                                  ...)>(hook_CallObjectMethod);
+    fake_env.functions->CallIntMethodV = reinterpret_cast<jint (*)(hook_JNIEnv *, jobject,
+                                                                   jmethodID,
+                                                                   va_list)>(hook_CallObjectMethodV);
+    fake_env.functions->CallIntMethodA = reinterpret_cast<jint (*)(hook_JNIEnv *, jobject,
+                                                                   jmethodID,
+                                                                   const jvalue *)>(hook_CallObjectMethodA);
+    fake_env.functions->CallShortMethod = reinterpret_cast<jshort (*)(hook_JNIEnv *, jobject,
+                                                                      jmethodID,
+                                                                      ...)>(hook_CallObjectMethod);
+    fake_env.functions->CallShortMethodV = reinterpret_cast<jshort (*)(hook_JNIEnv *, jobject,
+                                                                       jmethodID,
+                                                                       va_list )>(hook_CallObjectMethodV);
+    fake_env.functions->CallShortMethodA = reinterpret_cast<jshort (*)(hook_JNIEnv *, jobject,
+                                                                       jmethodID,
+                                                                       const jvalue *)>(hook_CallObjectMethodA);
+    fake_env.functions->CallStaticLongMethodV = hook_CallStaticLongMethodV;
     fake_env.functions->NewObject = hook_NewObject;
     fake_env.functions->NewObjectV = hook_NewObjectV;
     fake_env.functions->NewObjectA = hook_NewObjectA;
@@ -385,7 +454,6 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_env.functions->ReleaseStringUTFChars = hook_ReleaseStringUTFChars;
     fake_env.functions->Throw = hook_Throw;
 
-    hook_JavaVM  fake_jvm;
     fake_jvm.functions = new JNIInvokeInterface();
     fake_jvm.functions->GetEnv = hook_GetEnv;
     fake_jvm.functions->DestroyJavaVM = hook_DestoryJavaVM;
@@ -393,43 +461,7 @@ Java_com_example_myapplication_MainActivity_stringFromJNI2(JNIEnv *env, jobject 
     fake_jvm.functions->AttachCurrentThread = hook_AttachCurrentThread;
     fake_jvm.functions->AttachCurrentThreadAsDaemon = hook_AttachCurrentThreadAsDaemon;
 
-//     将伪造的fake_env赋值全局gEnv ，通过hook_JavaVM的GetEnv函数交给目标调用
-    gEnv = (JNIEnv*)&fake_env;
-    oEnv = env;
-
-    // 测试伪造的JavaVM
-//    JNIEnv * fade;
-//    fake_jvm.GetEnv(reinterpret_cast<void **>(&fade), 0x10004);
-//    fade->NewStringUTF("hello World");
-
     // dobby inlinehook 用例
-    doHook();
-
-//    void * handle  =  dlopen("libmyapplication.so" , RTLD_NOW);
-    // vmos
-    void * handle  =  dlopen("libJoelitonMods.so" , RTLD_NOW);
-
-    if(handle == NULL){
-        ALOGD("dlopen error %s" , dlerror());
-    }
-
-    jint (*func)(JavaVM *, void *pVoid);
-    func = (jint (*)(JavaVM* , void *))dlsym(handle, "JNI_OnLoad");
-
-//    int ret = func(origin_jvm , NULL);
-    // 伪造为hook_JavaVM时用
-    int ret = func((JavaVM *)&fake_jvm , NULL);
-
-    // the ret should be
-    //#define JNI_VERSION_1_1 0x00010001
-    //#define JNI_VERSION_1_2 0x00010002
-    //#define JNI_VERSION_1_4 0x00010004
-    //#define JNI_VERSION_1_6 0x00010006
-
-    ALOGD("JNI_OnLoad %d " , ret);
-    // Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0xXX 通常表示目标进程没有jniEnv 环境没有补充完整 ,调用到空指针引起
-
-    return env->NewStringUTF(hello);
+//    doHook();
 
 }
-
